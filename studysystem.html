@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Personalized Study Platform (Client-side Demo)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#7c3aed;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Helvetica,Arial;margin:0}
+    body{background:linear-gradient(180deg,#071129 0%, #071829 100%);color:#e6eef8;min-height:100vh;padding:20px}
+    .container{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    .logo{height:56px;width:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    h1{font-size:20px}
+    p.lead{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+    .upload-area{border:2px dashed rgba(255,255,255,0.04);padding:14px;border-radius:10px;display:flex;flex-direction:column;gap:10px}
+    .btn{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:white;cursor:pointer}
+    input[type=file]{display:none}
+    .files-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .file-item{padding:8px;background:var(--glass);border-radius:8px;font-size:13px;display:flex;justify-content:space-between}
+    label.file-label{display:inline-block}
+    textarea#editor{width:100%;height:160px;border-radius:8px;padding:10px;background:#061021;border:1px solid rgba(255,255,255,0.03);color:inherit}
+    .small{font-size:13px;color:var(--muted)}
+    .section-title{display:flex;align-items:center;justify-content:space-between}
+    .list{max-height:220px;overflow:auto;padding-right:6px}
+    .quiz-q{margin:12px 0;padding:10px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+    .option{display:block;margin:6px 0;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+    .analytics{display:flex;flex-direction:column;gap:12px}
+    .bar{height:12px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden}
+    .bar > span{display:block;height:100%;border-radius:6px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr;}.logo{display:none}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">PS</div>
+      <div>
+        <h1>Personalized Study Platform — Demo (client-side)</h1>
+        <p class="lead">Upload study text, automatically generate assessments, track progress and get AI-like recommendations (no external API required).</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <main class="card">
+        <div class="section-title">
+          <strong>Document Processing</strong>
+          <small class="small">Supports .txt/.md paste. (PDF/DOCX require backend or third-party libs)</small>
+        </div>
+
+        <div class="upload-area" style="margin-top:10px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="btn" for="fileInput">Choose file</label>
+            <input id="fileInput" type="file" accept=".txt,.md" />
+            <button class="btn" id="processBtn">Process</button>
+            <button class="btn" id="generateBtn">Generate Assessment</button>
+            <button class="btn" id="clearBtn" style="background:#ef4444">Clear</button>
+          </div>
+
+          <textarea id="editor" placeholder="Paste your study text here (or upload a .txt/.md)."></textarea>
+
+          <div class="files-list" id="filesList"></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <div class="small">Detected keywords:</div>
+            <div id="keywords" class="small" style="margin-left:6px;color:#fff"></div>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+        <div class="section-title"><strong>Assessment</strong><small class="small" id="assessmentMeta"></small></div>
+        <div id="assessmentArea" class="list" style="margin-top:10px"></div>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn" id="startQuizBtn">Start Quiz</button>
+          <button class="btn" id="exportResultsBtn">Export Results</button>
+        </div>
+
+      </main>
+
+      <aside class="card">
+        <div class="section-title"><strong>Progress & Analytics</strong><small class="small">Local-only (stored in browser)</small></div>
+        <div class="analytics" style="margin-top:10px">
+          <div>
+            <div class="small">Attempts</div>
+            <div id="attemptsList" class="list" style="max-height:120px"></div>
+          </div>
+
+          <div>
+            <div class="small">Overall Score</div>
+            <div style="font-size:22px;font-weight:700;margin-top:6px" id="overallScore">—</div>
+          </div>
+
+          <div>
+            <div class="small">Weak Topics (by frequency & low score)</div>
+            <div id="weakTopics"></div>
+          </div>
+
+          <div>
+            <div class="small">AI-driven Recommendations</div>
+            <div id="recommendations" style="margin-top:8px" class="small"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Tip: This is a frontend demo. For production you would add a backend to parse PDFs/DOCX, store user accounts, and use a real AI service for richer recommendations.
+    </footer>
+  </div>
+
+  <script>
+    // --- Utilities ---
+    const stopwords = new Set(["the","and","is","in","to","of","a","for","on","that","with","as","are","by","an","be","this","it","from","or","at","which","we","you","your"]);
+    function tokenize(text){return text.toLowerCase().match(/\b[a-z]{3,}\b/g)||[]}
+
+    function topKeywords(text, n=8){
+      const toks = tokenize(text).filter(t=>!stopwords.has(t));
+      const freq = {};
+      toks.forEach(w=>freq[w]=(freq[w]||0)+1);
+      return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,n).map(x=>x[0]);
+    }
+
+    // --- DOM ---
+    const editor = document.getElementById('editor');
+    const fileInput = document.getElementById('fileInput');
+    const filesList = document.getElementById('filesList');
+    const keywordsDiv = document.getElementById('keywords');
+    const processBtn = document.getElementById('processBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const assessmentArea = document.getElementById('assessmentArea');
+    const assessmentMeta = document.getElementById('assessmentMeta');
+    const startQuizBtn = document.getElementById('startQuizBtn');
+    const attemptsList = document.getElementById('attemptsList');
+    const overallScoreEl = document.getElementById('overallScore');
+    const weakTopicsEl = document.getElementById('weakTopics');
+    const recommendationsEl = document.getElementById('recommendations');
+    const exportResultsBtn = document.getElementById('exportResultsBtn');
+
+    // --- File handling ---
+    fileInput.addEventListener('change', async (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const li = document.createElement('div'); li.className='file-item';
+      li.innerHTML = `<span>${f.name}</span><span class="small">${(f.size/1024).toFixed(1)} KB</span>`;
+      filesList.prepend(li);
+      if(f.type === 'text/plain' || f.name.endsWith('.md')){
+        const text = await f.text();
+        editor.value = (editor.value?editor.value+'\n\n':'') + text;
+      } else {
+        // We don't parse PDFs/DOCX in this demo
+        alert('Only .txt and .md are auto-parsed in this demo. For PDFs/DOCX add backend parsing.');
+      }
+      fileInput.value='';
+    });
+
+    processBtn.addEventListener('click', ()=>{
+      const txt = editor.value.trim();
+      if(!txt) return alert('Paste or upload some text first');
+      const kw = topKeywords(txt,10);
+      keywordsDiv.textContent = kw.join(', ');
+      assessmentMeta.textContent = `${kw.length} keywords — auto questions will be created using these.`;
+      // store last processed
+      localStorage.setItem('ps_last_text', txt);
+      localStorage.setItem('ps_last_keywords', JSON.stringify(kw));
+      alert('Text processed — keywords detected. Click Generate Assessment to build questions.');
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      if(confirm('Clear editor and stored last processed?')){
+        editor.value='';filesList.innerHTML='';keywordsDiv.textContent='';assessmentArea.innerHTML='';assessmentMeta.textContent='';localStorage.removeItem('ps_last_text');localStorage.removeItem('ps_last_keywords');
+      }
+    });
+
+    // --- Assessment generation ---
+    function splitSentences(text){return text.match(/[^.!?\n]+[.!?]?/g) || [text];}
+
+    function generateQuestionsFromText(text, num=8){
+      const keywords = topKeywords(text, Math.min(12,num*2));
+      const sentences = splitSentences(text);
+      const questions = [];
+      keywords.slice(0,num).forEach((kw,i)=>{
+        // find sentence containing keyword or fallback to a random sentence
+        let sent = sentences.find(s=>s.toLowerCase().includes(kw));
+        if(!sent) sent = sentences[Math.floor(Math.random()*sentences.length)]||text.slice(0,120);
+        const questionText = sent.replace(new RegExp(kw,'ig'),'_____');
+        // choose distractors from other keywords
+        const distractors = keywords.filter(k=>k!==kw).slice(0,6);
+        // pick 3 random distractors
+        const opts = [kw];
+        while(opts.length<4 && distractors.length){
+          const r = distractors.splice(Math.floor(Math.random()*distractors.length),1)[0];
+          if(r && !opts.includes(r)) opts.push(r);
+        }
+        // shuffle
+        for(let j=opts.length-1;j>0;j--){const t=Math.floor(Math.random()*(j+1));[opts[j],opts[t]]=[opts[t],opts[j]]}
+        questions.push({id:i+1,keyword:kw,question:questionText,options:opts});
+      });
+      return questions;
+    }
+
+    generateBtn.addEventListener('click', ()=>{
+      const txt = editor.value.trim() || localStorage.getItem('ps_last_text') || '';
+      if(!txt) return alert('No text available to generate from. Paste or upload first.');
+      const qs = generateQuestionsFromText(txt,8);
+      assessmentArea.innerHTML='';
+      qs.forEach(q=>{
+        const div = document.createElement('div'); div.className='quiz-q';
+        div.innerHTML = `<div style="font-weight:600">Q${q.id}. ${q.question}</div>`;
+        q.options.forEach(opt=>{
+          const b = document.createElement('button'); b.className='option'; b.textContent=opt; b.dataset.qid=q.id; b.dataset.answer=opt;
+          b.addEventListener('click', ()=>{Array.from(div.querySelectorAll('.option')).forEach(x=>x.style.outline=''); b.style.outline='2px solid rgba(255,255,255,0.08)'; b.dataset.selected='true'; b._selected=opt});
+          div.appendChild(b);
+        });
+        assessmentArea.appendChild(div);
+      });
+      // save the generated quiz to localStorage to allow taking later
+      localStorage.setItem('ps_last_quiz', JSON.stringify(qs));
+      assessmentMeta.textContent = `Generated ${qs.length} questions from latest text.`;
+    });
+
+    // --- Quiz flow ---
+    startQuizBtn.addEventListener('click', ()=>{
+      const qs = JSON.parse(localStorage.getItem('ps_last_quiz')||'[]');
+      if(!qs.length) return alert('No generated assessment found. Click Generate Assessment first.');
+      // Display modal-like flow: ask each question and collect selected
+      let correct = 0; const answers = [];
+      // read DOM nodes for answers
+      qs.forEach(q=>{
+        const container = Array.from(assessmentArea.children).find(c=>c.querySelector(`[data-qid='${q.id}']`));
+        const selectedBtn = container && Array.from(container.querySelectorAll('.option')).find(b=>b._selected);
+        const selected = selectedBtn?selectedBtn._selected:null;
+        const isCorrect = selected === q.keyword;
+        if(isCorrect) correct++;
+        answers.push({qid:q.id,keyword:q.keyword,selected,correct:isCorrect});
+      });
+      const score = Math.round((correct/qs.length)*100);
+      // save attempt
+      const attempts = JSON.parse(localStorage.getItem('ps_attempts')||'[]');
+      attempts.push({date:(new Date()).toISOString(),score,answers});
+      localStorage.setItem('ps_attempts', JSON.stringify(attempts));
+      alert(`Quiz submitted — score ${score}% (${correct}/${qs.length})`);
+      renderAnalytics();
+    });
+
+    exportResultsBtn.addEventListener('click', ()=>{
+      const attempts = JSON.parse(localStorage.getItem('ps_attempts')||'[]');
+      if(!attempts.length) return alert('No attempts to export');
+      const blob = new Blob([JSON.stringify(attempts,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ps_attempts.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // --- Analytics / Recommendations ---
+    function renderAnalytics(){
+      const attempts = JSON.parse(localStorage.getItem('ps_attempts')||'[]');
+      attemptsList.innerHTML='';
+      if(!attempts.length){attemptsList.innerHTML='<div class="small">No attempts yet — take a quiz.</div>'; overallScoreEl.textContent='—'; weakTopicsEl.innerHTML='—'; recommendationsEl.textContent='—'; return}
+      attempts.slice().reverse().forEach(a=>{
+        const d=document.createElement('div'); d.className='file-item'; d.innerHTML = `<div>${new Date(a.date).toLocaleString()}</div><div>${a.score}%</div>`; attemptsList.appendChild(d);
+      });
+      const avg = Math.round(attempts.reduce((s,a)=>s+a.score,0)/attempts.length);
+      overallScoreEl.textContent = `${avg}% (avg)`;
+      // find weak keywords by analyzing last 5 attempts
+      const recent = attempts.slice(-6);
+      const weakCounts = {};
+      recent.forEach(at=>{
+        at.answers.forEach(ans=>{
+          if(!ans.correct) weakCounts[ans.keyword]=(weakCounts[ans.keyword]||0)+1;
+        });
+      });
+      const sorted = Object.entries(weakCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+      weakTopicsEl.innerHTML='';
+      if(sorted.length===0) weakTopicsEl.textContent='No consistent weak topics detected.';
+      else sorted.forEach(([kw,c])=>{
+        const row=document.createElement('div'); row.style.marginBottom='8px'; row.innerHTML=`<div style="font-weight:600">${kw}</div><div class="bar"><span style="width:${Math.min(100,c*20)}% ;background:linear-gradient(90deg,var(--accent),#06b6d4)"></span></div>`;
+        weakTopicsEl.appendChild(row);
+      });
+
+      // Simple AI-style recommendations based on weaknesses and overall score
+      const recs = [];
+      if(avg < 70) recs.push('Your average is below 70% — try short, focused sessions (25 minutes) on weak topics.');
+      if(sorted.length>0) recs.push(`Focus revision on: ${sorted.map(s=>s[0]).join(', ')} — create flashcards for these keywords.`);
+      if(recs.length===0) recs.push('Great work! Keep practicing by mixing retrieval and spaced-repetition.');
+      recommendationsEl.innerHTML = recs.map(r=>`<div style="margin-bottom:6px">• ${r}</div>`).join('');
+    }
+
+    // --- Init ---
+    (function(){
+      // load last processed
+      const lastText = localStorage.getItem('ps_last_text');
+      if(lastText) editor.value = lastText;
+      const lastKw = JSON.parse(localStorage.getItem('ps_last_keywords')||'[]');
+      if(lastKw.length) keywordsDiv.textContent = lastKw.join(', ');
+      renderAnalytics();
+    })();
+
+    // Accessibility: allow Enter on Generate when focus on editor
+    editor.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.key==='Enter'){ generateBtn.click(); } });
+  </script>
+</body>
+</html>
